@@ -40,14 +40,9 @@
         <!--
         Choose here which languages should be used.
         Available languages in the polyglot group are:
-            js, ruby, python, wasm, llvm, llvm-native, java
+            js, python, wasm, ruby, llvm, llvm-native, java
 
-        Switch to community licenses by adding a `-community` suffix to the artefact id (e.g. `js-communtiy`).
         Switch to native isolate versions of languages by adding a `-isolate` suffix. (`js-isolate`).
-        Starting from GraalVM Polyglot API version 24.1.0, native isolate versions of languages for specific platforms are supported.
-        Refer to the `isolate` profiles for instructions on how to activate them.
-
-        Any dependency in the org.graalvm.polyglot group is intended for use by polyglot embeddings.
         -->
         <dependency>
             <groupId>org.graalvm.polyglot</groupId>
@@ -108,10 +103,6 @@
                         <configuration>
                             <executable>${java.home}/bin/java</executable>
                             <arguments>
-                                <!--
-                                We recommend running from the module path by default.
-                                You can also switch to the classpath here.
-                                -->
                                 <argument>--module-path</argument>
                                 <modulepath/>
                                 <argument>-m</argument>
@@ -123,10 +114,6 @@
                 <configuration>
                     <executable>${java.home}/bin/java</executable>
                     <arguments>
-                        <!--
-                        We recommend running from the module path by default.
-                        You can also switch to the classpath here.
-                        -->
                         <argument>--module-path</argument>
                         <modulepath/>
                         <argument>-m</argument>
@@ -573,10 +560,6 @@
                                     <executable>${java.home}/bin/java</executable>
                                     <arguments>
                                         <argument>-Dpolyglot.engine.SpawnIsolate=${isolated.language.id}</argument>
-                                        <!--
-                                        We recommend running from the module path by default.
-                                        You can also switch to the classpath here.
-                                        -->
                                         <argument>--module-path</argument>
                                         <modulepath/>
                                         <argument>-m</argument>
@@ -589,10 +572,6 @@
                             <executable>${java.home}/bin/java</executable>
                             <arguments>
                                 <argument>-Dpolyglot.engine.SpawnIsolate=${isolated.language.id}</argument>
-                                <!--
-                                We recommend running from the module path by default.
-                                You can also switch to the classpath here.
-                                -->
                                 <argument>--module-path</argument>
                                 <modulepath/>
                                 <argument>-m</argument>
