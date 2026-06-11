@@ -1,7 +1,7 @@
 # Deploying a GraalVM Polyglot Application to Oracle WebLogic
 
 This Maven project builds a Jakarta EE WAR that embeds GraalJS with the GraalVM Polyglot API and deploys to Oracle WebLogic.
-The application exposes a `POST /js` endpoint under the WebLogic context root `/weblogic-test`. The endpoint evaluates JavaScript source from a `text/plain` request body in a restricted polyglot context.
+The application exposes a `POST /chart` endpoint under the WebLogic context root `/weblogic-test`. The endpoint validates JSON chart data and uses bundled, trusted JavaScript to generate an SVG sparkline.
 
 For more details on polyglot embedding, see the GraalVM documentation:
 https://www.graalvm.org/latest/reference-manual/embed-languages/
@@ -118,20 +118,23 @@ To deploy a WAR built for the server-level `PRE_CLASSPATH` layout:
 MAVEN_ARGS='-Pprovided-polyglot clean package' ./deploy-to-weblogic-autodeploy.sh
 ```
 
-## Evaluate JavaScript
+## Render an SVG Chart
 
-After deploying the WAR, post JavaScript source as a `text/plain` request body:
+After deploying the WAR, post chart data as an `application/json` request body:
 
 ```bash
-curl -s -X POST http://localhost:7001/weblogic-test/js \
-  -H 'Content-Type: text/plain' \
-  --data-binary '21 + 21'
+curl -s -X POST http://localhost:7001/weblogic-test/chart \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: image/svg+xml' \
+  --data-binary '{"values":[1,3,2,5,4],"width":400,"height":120,"color":"#16a34a"}'
 ```
 
 Response:
 
-```text
-42
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120">
+  <path d="..." fill="none" stroke="#16a34a" stroke-width="2"/>
+</svg>
 ```
 
-Empty request bodies and JavaScript evaluation errors are returned as HTTP `400` responses.
+The resource validates the submitted chart data before invoking the bundled renderer. Invalid input is rejected with HTTP `400`.

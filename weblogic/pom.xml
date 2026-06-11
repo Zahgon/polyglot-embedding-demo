@@ -10,7 +10,7 @@
   <packaging>war</packaging>
 
   <name>GraalVM Polyglot WebLogic Demo</name>
-  <description>WebLogic GraalJS Polyglot embedding example</description>
+  <description>WebLogic GraalJS Polyglot SVG chart embedding example</description>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

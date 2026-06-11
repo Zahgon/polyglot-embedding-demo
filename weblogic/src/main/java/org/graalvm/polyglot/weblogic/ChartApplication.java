@@ -40,28 +40,9 @@
  */
 package org.graalvm.polyglot.weblogic;
 
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import jakarta.ws.rs.ApplicationPath;
+import jakarta.ws.rs.core.Application;
 
-class JSResourceTest {
-
-    @Test
-    void evaluatesPostedJavaScript() {
-        try (Response response = new JSResource().evaluate("21 + 21")) {
-            Assertions.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-            Assertions.assertEquals(MediaType.TEXT_PLAIN_TYPE, response.getMediaType());
-            Assertions.assertEquals("42", response.getEntity());
-        }
-    }
-
-    @Test
-    void rejectsBlankJavaScript() {
-        try (Response response = new JSResource().evaluate("  ")) {
-            Assertions.assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-            Assertions.assertEquals(MediaType.TEXT_PLAIN_TYPE, response.getMediaType());
-            Assertions.assertEquals("Request body must contain JavaScript source.", response.getEntity());
-        }
-    }
+@ApplicationPath("/")
+public class ChartApplication extends Application {
 }

@@ -40,57 +40,54 @@
  */
 package org.graalvm.polyglot.weblogic;
 
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-@Path("/js")
-public final class JSResource {
+class ChartResourceTest {
 
-    @POST
-    @Consumes(MediaType.TEXT_PLAIN)
-    @Produces(MediaType.TEXT_PLAIN)
-    public Response evaluate(String script) {
-        if (script == null || script.isBlank()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .type(MediaType.TEXT_PLAIN_TYPE)
-                    .entity("Request body must contain JavaScript source.")
-                    .build();
-        }
+    @Test
+    void rendersPostedChartDataAsSvg() {
+        ChartResource.ChartRequest request = new ChartResource.ChartRequest(
+                List.of(1.0, 3.0, 2.0, 5.0, 4.0), 400, 120, "#16a34a");
 
-        try (Context context = Context.newBuilder("js")
-                .allowAllAccess(false)
-                .build()) {
-            Value result = context.eval("js", script);
-            return Response.ok(asString(result), MediaType.TEXT_PLAIN_TYPE).build();
-        } catch (PolyglotException exception) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .type(MediaType.TEXT_PLAIN_TYPE)
-                    .entity(exception.getMessage())
-                    .build();
+        try (Response response = new ChartResource().render(request)) {
+            Assertions.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+            Assertions.assertEquals(MediaType.valueOf("image/svg+xml"), response.getMediaType());
+            String body = (String) response.getEntity();
+            Assertions.assertTrue(body.startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 400 120\">"));
+            Assertions.assertTrue(body.contains("<path d=\"M"));
+            Assertions.assertTrue(body.contains("stroke=\"#16a34a\""));
         }
     }
 
-    private static String asString(Value value) {
-        if (value == null || value.isNull()) {
-            return "null";
-        } else if (value.isString()) {
-            return value.asString();
-        } else if (value.isBoolean()) {
-            return Boolean.toString(value.asBoolean());
-        } else if (value.isNumber()) {
-            if (value.fitsInLong()) {
-                return Long.toString(value.asLong());
-            } else if (value.fitsInDouble()) {
-                return Double.toString(value.asDouble());
-            }
+    @Test
+    void rejectsUnsafeColor() {
+        ChartResource.ChartRequest request = new ChartResource.ChartRequest(List.of(1.0, 2.0, 3.0), null, null, "red");
+
+        try (Response response = new ChartResource().render(request)) {
+            Assertions.assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+            Assertions.assertEquals(MediaType.TEXT_PLAIN_TYPE, response.getMediaType());
+            Assertions.assertTrue(((String) response.getEntity()).contains("color must be a hex color"));
         }
-        return value.toString();
+    }
+
+    @Test
+    void rejectsTooManyPoints() {
+        List<Double> values = new ArrayList<>();
+        for (int i = 0; i < 201; i++) {
+            values.add((double) i);
+        }
+        ChartResource.ChartRequest request = new ChartResource.ChartRequest(values, null, null, null);
+
+        try (Response response = new ChartResource().render(request)) {
+            Assertions.assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+            Assertions.assertEquals(MediaType.TEXT_PLAIN_TYPE, response.getMediaType());
+            Assertions.assertTrue(((String) response.getEntity()).contains("values must contain between 2 and 200 numbers"));
+        }
     }
 }
