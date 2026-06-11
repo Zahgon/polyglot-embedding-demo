@@ -1,0 +1,33 @@
+name: Test microservice demos
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 0 1 * *" # run every month
+
+jobs:
+  maven:
+    name: ${{ matrix.project }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - micronaut
+          - quarkus
+          - spring
+    steps:
+      - uses: actions/checkout@v4
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25.0.3'
+          distribution: 'graalvm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: 'maven'
+      - name: Test
+        working-directory: ${{ matrix.project }}
+        run: mvn --no-transfer-progress test
+      - name: Test with isolated JavaScript engine
+        working-directory: ${{ matrix.project }}
+        run: mvn --no-transfer-progress -Pisolated test
