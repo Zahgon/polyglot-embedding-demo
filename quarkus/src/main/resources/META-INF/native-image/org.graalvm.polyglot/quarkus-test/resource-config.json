@@ -1,0 +1,9 @@
+{
+  "resources": {
+    "includes": [
+      { "pattern": "\\Qjs/d3-path.min.js\\E" },
+      { "pattern": "\\Qjs/d3-shape.min.js\\E" },
+      { "pattern": "\\Qjs/sparkline.js\\E" }
+    ]
+  }
+}

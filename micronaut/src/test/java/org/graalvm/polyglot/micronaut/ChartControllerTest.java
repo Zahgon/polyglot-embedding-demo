@@ -41,9 +41,11 @@
 package org.graalvm.polyglot.micronaut;
 
 import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpStatus;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.client.HttpClient;
 import io.micronaut.http.client.annotation.Client;
+import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.runtime.EmbeddedApplication;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
@@ -51,7 +53,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 @MicronautTest
-class JSControllerTest {
+class ChartControllerTest {
 
     @Inject
     EmbeddedApplication<?> application;
@@ -66,13 +68,56 @@ class JSControllerTest {
     }
 
     @Test
-    void evaluatesPostedJavaScript() {
-        HttpRequest<String> request = HttpRequest.POST("/js", "21 + 21")
-                .contentType(MediaType.TEXT_PLAIN_TYPE)
-                .accept(MediaType.TEXT_PLAIN_TYPE);
+    void rendersPostedChartDataAsSvg() {
+        HttpRequest<String> request = HttpRequest.POST("/chart", """
+                {"values":[1,3,2,5,4],"width":400,"height":120,"color":"#16a34a"}
+                """)
+                .contentType(MediaType.APPLICATION_JSON_TYPE)
+                .accept(MediaType.IMAGE_SVG_TYPE);
 
         String response = client.toBlocking().retrieve(request);
 
-        Assertions.assertEquals("42", response);
+        Assertions.assertTrue(response.startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 400 120\">"));
+        Assertions.assertTrue(response.contains("<path d=\"M"));
+        Assertions.assertTrue(response.contains("stroke=\"#16a34a\""));
+    }
+
+    @Test
+    void rejectsUnsafeColor() {
+        HttpRequest<String> request = HttpRequest.POST("/chart", """
+                {"values":[1,2,3],"color":"red"}
+                """)
+                .contentType(MediaType.APPLICATION_JSON_TYPE)
+                .accept(MediaType.IMAGE_SVG_TYPE);
+
+        HttpClientResponseException exception = Assertions.assertThrows(HttpClientResponseException.class,
+                () -> client.toBlocking().retrieve(request));
+
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        String body = exception.getResponse().getBody(String.class).orElse("");
+        Assertions.assertTrue(body.contains("color must be a hex color"), body);
+    }
+
+    @Test
+    void rejectsTooManyPoints() {
+        StringBuilder values = new StringBuilder("{\"values\":[");
+        for (int i = 0; i < 201; i++) {
+            if (i > 0) {
+                values.append(',');
+            }
+            values.append(i);
+        }
+        values.append("]}");
+
+        HttpRequest<String> request = HttpRequest.POST("/chart", values.toString())
+                .contentType(MediaType.APPLICATION_JSON_TYPE)
+                .accept(MediaType.IMAGE_SVG_TYPE);
+
+        HttpClientResponseException exception = Assertions.assertThrows(HttpClientResponseException.class,
+                () -> client.toBlocking().retrieve(request));
+
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        String body = exception.getResponse().getBody(String.class).orElse("");
+        Assertions.assertTrue(body.contains("values must contain between 2 and 200 numbers"), body);
     }
 }

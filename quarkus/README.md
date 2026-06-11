@@ -1,7 +1,7 @@
 # Polyglot Embedding Demo with GraalVM: Quarkus
 
 Demonstration project showing how to embed GraalJS in a Quarkus REST service with the GraalVM Polyglot API and Maven.
-It exposes a `POST /js` endpoint that evaluates JavaScript source from a `text/plain` request body in a restricted polyglot context.
+It exposes a `POST /chart` endpoint that validates JSON chart data and uses bundled, trusted JavaScript to generate an SVG sparkline.
 
 For more details on polyglot embedding, see the GraalVM documentation:
 https://www.graalvm.org/latest/reference-manual/embed-languages/
@@ -26,30 +26,33 @@ export PATH="$JAVA_HOME/bin:$PATH"
 Download Maven or import this directory as a Maven project into your IDE. The commands below should be run from this `quarkus` directory.
 
 * `mvn test` to run the HTTP endpoint tests.
-* `mvn -Pisolated test` to run the tests with the native isolate version of the JavaScript engine.
+* `mvn -Pisolated test` to run the tests with the isolated JavaScript engine.
 * `mvn quarkus:dev` to run the application in Quarkus dev mode.
 * `mvn -Pisolated quarkus:dev` to run dev mode with the isolated JavaScript engine.
 * `mvn package` to build the Quarkus application.
 * `mvn -Pnative package` to build a native executable with Quarkus Native Image support.
 
-The `isolated` profile uses `org.graalvm.polyglot:js-isolate` instead of the default JavaScript artifact and passes `-Dengine.SpawnIsolate=true` to the Quarkus JVM and test JVM. For Polyglot `25.1` Community Edition, use `org.graalvm.polyglot:js-isolate-community` as noted in [pom.xml](./pom.xml).
+The `isolated` profile uses `org.graalvm.polyglot:js-isolate` instead of the default JavaScript artifact and passes `-Dpolyglot.engine.SpawnIsolate=true` to the Quarkus application and test JVMs. For Polyglot `25.1` Community Edition, use `org.graalvm.polyglot:js-isolate-community` as noted in [pom.xml](./pom.xml).
 
 Please see the [pom.xml](./pom.xml) file for further details on the configuration.
 
-## Evaluate JavaScript
+## Render an SVG Chart
 
-After starting the service, post JavaScript source as a `text/plain` request body:
+After starting the service, post chart data as a JSON request body:
 
 ```bash
-curl -s -X POST http://localhost:8080/js \
-  -H 'Content-Type: text/plain' \
-  --data-binary '21 + 21'
+curl -s -X POST http://localhost:8080/chart \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: image/svg+xml' \
+  --data-binary '{"values":[1,3,2,5,4],"width":400,"height":120,"color":"#16a34a"}'
 ```
 
 Response:
 
-```text
-42
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120">
+  <path d="..." fill="none" stroke="#16a34a" stroke-width="2"/>
+</svg>
 ```
 
-Empty request bodies and JavaScript evaluation errors are returned as HTTP `400` responses.
+The controller validates the submitted chart data before invoking the bundled renderer. Invalid input is rejected with HTTP `400`.

@@ -38,53 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.polyglot.micronaut;
+package org.graalvm.polyglot.quarkus;
 
-import io.micronaut.http.HttpResponse;
-import io.micronaut.http.MediaType;
-import io.micronaut.http.annotation.Body;
-import io.micronaut.http.annotation.Controller;
-import io.micronaut.http.annotation.Post;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
 
-@Controller("/js")
-public final class JSController {
-
-    @Post(consumes = MediaType.TEXT_PLAIN, produces = MediaType.TEXT_PLAIN)
-    public HttpResponse<String> evaluate(@Body String script) {
-        if (script == null || script.isBlank()) {
-            return HttpResponse.badRequest("Request body must contain JavaScript source.")
-                    .contentType(MediaType.TEXT_PLAIN_TYPE);
-        }
-
-        try (Context context = Context.newBuilder("js")
-                .allowAllAccess(false)
-                .build()) {
-            Value result = context.eval("js", script);
-            return HttpResponse.ok(asString(result))
-                    .contentType(MediaType.TEXT_PLAIN_TYPE);
-        } catch (PolyglotException exception) {
-            return HttpResponse.badRequest(exception.getMessage())
-                    .contentType(MediaType.TEXT_PLAIN_TYPE);
-        }
-    }
-
-    private static String asString(Value value) {
-        if (value == null || value.isNull()) {
-            return "null";
-        } else if (value.isString()) {
-            return value.asString();
-        } else if (value.isBoolean()) {
-            return Boolean.toString(value.asBoolean());
-        } else if (value.isNumber()) {
-            if (value.fitsInLong()) {
-                return Long.toString(value.asLong());
-            } else if (value.fitsInDouble()) {
-                return Double.toString(value.asDouble());
-            }
-        }
-        return value.toString();
-    }
+@QuarkusIntegrationTest
+class ChartResourceIT extends ChartResourceTest {
+    // Execute the same tests but in packaged mode.
 }

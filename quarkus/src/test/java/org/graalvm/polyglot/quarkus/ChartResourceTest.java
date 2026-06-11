@@ -40,9 +40,68 @@
  */
 package org.graalvm.polyglot.quarkus;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
 
-@QuarkusIntegrationTest
-class JSResourceIT extends JSResourceTest {
-    // Execute the same tests but in packaged mode.
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.startsWith;
+
+@QuarkusTest
+class ChartResourceTest {
+
+    @Test
+    void rendersPostedChartDataAsSvg() {
+        given()
+                .contentType("application/json")
+                .accept("image/svg+xml")
+                .body("""
+                        {"values":[1,3,2,5,4],"width":400,"height":120,"color":"#16a34a"}
+                        """)
+                .when()
+                .post("/chart")
+                .then()
+                .statusCode(200)
+                .contentType("image/svg+xml")
+                .body(startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 400 120\">"))
+                .body(containsString("<path d=\"M"))
+                .body(containsString("stroke=\"#16a34a\""));
+    }
+
+    @Test
+    void rejectsUnsafeColor() {
+        given()
+                .contentType("application/json")
+                .accept("image/svg+xml")
+                .body("""
+                        {"values":[1,2,3],"color":"red"}
+                        """)
+                .when()
+                .post("/chart")
+                .then()
+                .statusCode(400)
+                .body(containsString("color must be a hex color"));
+    }
+
+    @Test
+    void rejectsTooManyPoints() {
+        StringBuilder values = new StringBuilder("{\"values\":[");
+        for (int i = 0; i < 201; i++) {
+            if (i > 0) {
+                values.append(',');
+            }
+            values.append(i);
+        }
+        values.append("]}");
+
+        given()
+                .contentType("application/json")
+                .accept("image/svg+xml")
+                .body(values.toString())
+                .when()
+                .post("/chart")
+                .then()
+                .statusCode(400)
+                .body(containsString("values must contain between 2 and 200 numbers"));
+    }
 }

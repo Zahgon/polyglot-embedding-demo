@@ -40,19 +40,20 @@
  */
 package org.graalvm.polyglot.spring;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class SpringTestApplicationTests {
+class ChartControllerTest {
 
     @LocalServerPort
     private int port;
@@ -62,17 +63,52 @@ class SpringTestApplicationTests {
     }
 
     @Test
-    void evaluatesPostedJavaScript() throws Exception {
-        HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/js"))
-                .header("Content-Type", "text/plain")
-                .header("Accept", "text/plain")
-                .POST(HttpRequest.BodyPublishers.ofString("21 + 21"))
-                .build();
-
-        HttpResponse<String> response = HttpClient.newHttpClient()
-                .send(request, HttpResponse.BodyHandlers.ofString());
+    void rendersPostedChartDataAsSvg() throws Exception {
+        HttpResponse<String> response = postChart("""
+                {"values":[1,3,2,5,4],"width":400,"height":120,"color":"#16a34a"}
+                """);
 
         assertEquals(200, response.statusCode());
-        assertEquals("42", response.body());
+        assertTrue(response.headers().firstValue("Content-Type").orElse("").startsWith("image/svg+xml"));
+        assertTrue(response.body().startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 400 120\">"));
+        assertTrue(response.body().contains("<path d=\"M"));
+        assertTrue(response.body().contains("stroke=\"#16a34a\""));
+    }
+
+    @Test
+    void rejectsUnsafeColor() throws Exception {
+        HttpResponse<String> response = postChart("""
+                {"values":[1,2,3],"color":"red"}
+                """);
+
+        assertEquals(400, response.statusCode());
+        assertTrue(response.body().contains("color must be a hex color"), response.body());
+    }
+
+    @Test
+    void rejectsTooManyPoints() throws Exception {
+        StringBuilder values = new StringBuilder("{\"values\":[");
+        for (int i = 0; i < 201; i++) {
+            if (i > 0) {
+                values.append(',');
+            }
+            values.append(i);
+        }
+        values.append("]}");
+
+        HttpResponse<String> response = postChart(values.toString());
+
+        assertEquals(400, response.statusCode());
+        assertTrue(response.body().contains("values must contain between 2 and 200 numbers"), response.body());
+    }
+
+    private HttpResponse<String> postChart(String body) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/chart"))
+                .header("Content-Type", "application/json")
+                .header("Accept", "image/svg+xml")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+
+        return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
     }
 }
