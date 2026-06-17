@@ -1,0 +1,13 @@
+[
+    {
+        "name": "java.util.Locale",
+        "methods": [
+            {
+                "name": "getDefault",
+                "parameterTypes": [
+                    "java.util.Locale$Category"
+                ]
+            }
+        ]
+    }
+]

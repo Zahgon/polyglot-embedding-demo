@@ -1,7 +1,7 @@
 # Polyglot Embedding Demo with GraalVM: Spring Boot
 
 Demonstration project showing how to embed GraalJS in a Spring Boot HTTP service with the GraalVM Polyglot API and Maven.
-It exposes a `POST /chart` endpoint that validates JSON chart data and uses bundled, trusted JavaScript to generate an SVG sparkline.
+It exposes a `POST /chart` endpoint that validates JSON chart data and uses bundled, trusted JavaScript to generate an SVG bar chart.
 
 For more details on polyglot embedding, see the GraalVM documentation:
 https://www.graalvm.org/latest/reference-manual/embed-languages/
@@ -44,14 +44,17 @@ After starting the service, post chart data as a JSON request body:
 curl -s -X POST http://localhost:8080/chart \
   -H 'Content-Type: application/json' \
   -H 'Accept: image/svg+xml' \
-  --data-binary '{"values":[1,3,2,5,4],"width":400,"height":120,"color":"#16a34a"}'
+  --data-binary '{"title":"Fruit sold","xLabel":"Fruit","yLabel":"Count","x":["Apples","Bananas","Cherries"],"y":[4,7,5],"width":480,"height":320}'
 ```
 
 Response:
 
 ```xml
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120">
-  <path d="..." fill="none" stroke="#16a34a" stroke-width="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320">
+  <title>Fruit sold</title>
+  ...
+  <rect x="..." y="..." width="..." height="..." fill="#2563eb"/>
+  ...
 </svg>
 ```
 

@@ -70,22 +70,24 @@ class ChartControllerTest {
     @Test
     void rendersPostedChartDataAsSvg() {
         HttpRequest<String> request = HttpRequest.POST("/chart", """
-                {"values":[1,3,2,5,4],"width":400,"height":120,"color":"#16a34a"}
+                {"title":"Fruit sold","xLabel":"Fruit","yLabel":"Count","x":["Apples","Bananas","Cherries"],"y":[4,7,5],"width":480,"height":320}
                 """)
                 .contentType(MediaType.APPLICATION_JSON_TYPE)
                 .accept(MediaType.IMAGE_SVG_TYPE);
 
         String response = client.toBlocking().retrieve(request);
 
-        Assertions.assertTrue(response.startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 400 120\">"));
-        Assertions.assertTrue(response.contains("<path d=\"M"));
-        Assertions.assertTrue(response.contains("stroke=\"#16a34a\""));
+        Assertions.assertTrue(response.startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 480 320\">"));
+        Assertions.assertTrue(response.contains("<title>Fruit sold</title>"));
+        Assertions.assertTrue(response.contains(">Fruit<"));
+        Assertions.assertTrue(response.contains(">Count<"));
+        Assertions.assertTrue(response.contains("<rect x=\""));
     }
 
     @Test
-    void rejectsUnsafeColor() {
+    void rejectsNegativeBarValue() {
         HttpRequest<String> request = HttpRequest.POST("/chart", """
-                {"values":[1,2,3],"color":"red"}
+                {"title":"Fruit sold","xLabel":"Fruit","yLabel":"Count","x":["Apples"],"y":[-1]}
                 """)
                 .contentType(MediaType.APPLICATION_JSON_TYPE)
                 .accept(MediaType.IMAGE_SVG_TYPE);
@@ -95,21 +97,28 @@ class ChartControllerTest {
 
         Assertions.assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
         String body = exception.getResponse().getBody(String.class).orElse("");
-        Assertions.assertTrue(body.contains("color must be a hex color"), body);
+        Assertions.assertTrue(body.contains("y values must be finite, non-negative numbers"), body);
     }
 
     @Test
-    void rejectsTooManyPoints() {
-        StringBuilder values = new StringBuilder("{\"values\":[");
-        for (int i = 0; i < 201; i++) {
+    void rejectsTooManyBars() {
+        StringBuilder chartJson = new StringBuilder("{\"x\":[");
+        for (int i = 0; i < 101; i++) {
             if (i > 0) {
-                values.append(',');
+                chartJson.append(',');
             }
-            values.append(i);
+            chartJson.append("\"Bar ").append(i).append('\"');
         }
-        values.append("]}");
+        chartJson.append("],\"y\":[");
+        for (int i = 0; i < 101; i++) {
+            if (i > 0) {
+                chartJson.append(',');
+            }
+            chartJson.append(i);
+        }
+        chartJson.append("]}");
 
-        HttpRequest<String> request = HttpRequest.POST("/chart", values.toString())
+        HttpRequest<String> request = HttpRequest.POST("/chart", chartJson.toString())
                 .contentType(MediaType.APPLICATION_JSON_TYPE)
                 .accept(MediaType.IMAGE_SVG_TYPE);
 
@@ -118,6 +127,6 @@ class ChartControllerTest {
 
         Assertions.assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
         String body = exception.getResponse().getBody(String.class).orElse("");
-        Assertions.assertTrue(body.contains("values must contain between 2 and 200 numbers"), body);
+        Assertions.assertTrue(body.contains("x and y must contain the same number of entries, between 1 and 100"), body);
     }
 }

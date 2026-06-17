@@ -56,52 +56,61 @@ class ChartResourceTest {
                 .contentType("application/json")
                 .accept("image/svg+xml")
                 .body("""
-                        {"values":[1,3,2,5,4],"width":400,"height":120,"color":"#16a34a"}
+                        {"title":"Fruit sold","xLabel":"Fruit","yLabel":"Count","x":["Apples","Bananas","Cherries"],"y":[4,7,5],"width":480,"height":320}
                         """)
                 .when()
                 .post("/chart")
                 .then()
                 .statusCode(200)
                 .contentType("image/svg+xml")
-                .body(startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 400 120\">"))
-                .body(containsString("<path d=\"M"))
-                .body(containsString("stroke=\"#16a34a\""));
+                .body(startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 480 320\">"))
+                .body(containsString("<title>Fruit sold</title>"))
+                .body(containsString(">Fruit<"))
+                .body(containsString(">Count<"))
+                .body(containsString("<rect x=\""));
     }
 
     @Test
-    void rejectsUnsafeColor() {
+    void rejectsNegativeBarValue() {
         given()
                 .contentType("application/json")
                 .accept("image/svg+xml")
                 .body("""
-                        {"values":[1,2,3],"color":"red"}
+                        {"title":"Fruit sold","xLabel":"Fruit","yLabel":"Count","x":["Apples"],"y":[-1]}
                         """)
                 .when()
                 .post("/chart")
                 .then()
                 .statusCode(400)
-                .body(containsString("color must be a hex color"));
+                .body(containsString("y values must be finite, non-negative numbers"));
     }
 
     @Test
-    void rejectsTooManyPoints() {
-        StringBuilder values = new StringBuilder("{\"values\":[");
-        for (int i = 0; i < 201; i++) {
+    void rejectsTooManyBars() {
+        StringBuilder chartJson = new StringBuilder("{\"x\":[");
+        for (int i = 0; i < 101; i++) {
             if (i > 0) {
-                values.append(',');
+                chartJson.append(',');
             }
-            values.append(i);
+            chartJson.append("\"Bar ").append(i).append('\"');
         }
-        values.append("]}");
+        chartJson.append("],\"y\":[");
+        for (int i = 0; i < 101; i++) {
+            if (i > 0) {
+                chartJson.append(',');
+            }
+            chartJson.append(i);
+        }
+        chartJson.append("]}");
 
         given()
                 .contentType("application/json")
                 .accept("image/svg+xml")
-                .body(values.toString())
+                .body(chartJson.toString())
                 .when()
                 .post("/chart")
                 .then()
                 .statusCode(400)
-                .body(containsString("values must contain between 2 and 200 numbers"));
+                .body(containsString("x and y must contain the same number of entries, between 1 and 100"));
     }
 }

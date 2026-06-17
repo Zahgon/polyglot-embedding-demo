@@ -65,41 +65,50 @@ class ChartControllerTest {
     @Test
     void rendersPostedChartDataAsSvg() throws Exception {
         HttpResponse<String> response = postChart("""
-                {"values":[1,3,2,5,4],"width":400,"height":120,"color":"#16a34a"}
+                {"title":"Fruit sold","xLabel":"Fruit","yLabel":"Count","x":["Apples","Bananas","Cherries"],"y":[4,7,5],"width":480,"height":320}
                 """);
 
         assertEquals(200, response.statusCode());
         assertTrue(response.headers().firstValue("Content-Type").orElse("").startsWith("image/svg+xml"));
-        assertTrue(response.body().startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 400 120\">"));
-        assertTrue(response.body().contains("<path d=\"M"));
-        assertTrue(response.body().contains("stroke=\"#16a34a\""));
+        assertTrue(response.body().startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 480 320\">"));
+        assertTrue(response.body().contains("<title>Fruit sold</title>"));
+        assertTrue(response.body().contains(">Fruit<"));
+        assertTrue(response.body().contains(">Count<"));
+        assertTrue(response.body().contains("<rect x=\""));
     }
 
     @Test
-    void rejectsUnsafeColor() throws Exception {
+    void rejectsNegativeBarValue() throws Exception {
         HttpResponse<String> response = postChart("""
-                {"values":[1,2,3],"color":"red"}
+                {"title":"Fruit sold","xLabel":"Fruit","yLabel":"Count","x":["Apples"],"y":[-1]}
                 """);
 
         assertEquals(400, response.statusCode());
-        assertTrue(response.body().contains("color must be a hex color"), response.body());
+        assertTrue(response.body().contains("y values must be finite, non-negative numbers"), response.body());
     }
 
     @Test
-    void rejectsTooManyPoints() throws Exception {
-        StringBuilder values = new StringBuilder("{\"values\":[");
-        for (int i = 0; i < 201; i++) {
+    void rejectsTooManyBars() throws Exception {
+        StringBuilder chartJson = new StringBuilder("{\"x\":[");
+        for (int i = 0; i < 101; i++) {
             if (i > 0) {
-                values.append(',');
+                chartJson.append(',');
             }
-            values.append(i);
+            chartJson.append("\"Bar ").append(i).append('\"');
         }
-        values.append("]}");
+        chartJson.append("],\"y\":[");
+        for (int i = 0; i < 101; i++) {
+            if (i > 0) {
+                chartJson.append(',');
+            }
+            chartJson.append(i);
+        }
+        chartJson.append("]}");
 
-        HttpResponse<String> response = postChart(values.toString());
+        HttpResponse<String> response = postChart(chartJson.toString());
 
         assertEquals(400, response.statusCode());
-        assertTrue(response.body().contains("values must contain between 2 and 200 numbers"), response.body());
+        assertTrue(response.body().contains("x and y must contain the same number of entries, between 1 and 100"), response.body());
     }
 
     private HttpResponse<String> postChart(String body) throws Exception {
