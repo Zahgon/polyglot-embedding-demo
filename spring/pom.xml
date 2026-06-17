@@ -15,7 +15,7 @@
 	<description>Spring Boot GraalJS Polyglot example</description>
 	<properties>
 		<java.version>21</java.version>
-		<graal.version>25.0.3</graal.version>
+		<graal.version>25.1.3</graal.version>
 		<graal.js.artifact>js</graal.js.artifact>
 		<jvm.args></jvm.args>
 	</properties>

@@ -22,7 +22,7 @@
     <micronaut.aot.packageName>org.graalvm.polyglot.micronaut.aot.generated</micronaut.aot.packageName>
     <micronaut.runtime>netty</micronaut.runtime>
     <exec.mainClass>org.graalvm.polyglot.micronaut.Application</exec.mainClass>
-    <graal.version>25.0.3</graal.version>
+    <graal.version>25.1.3</graal.version>
     <graal.js.artifact>js</graal.js.artifact>
     <mn.jvmArgs></mn.jvmArgs>
   </properties>

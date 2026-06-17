@@ -1,13 +1,12 @@
 [
     {
-        "name": "java.util.Locale",
-        "methods": [
-            {
-                "name": "getDefault",
-                "parameterTypes": [
-                    "java.util.Locale$Category"
-                ]
-            }
-        ]
+        "name": "org.apache.coyote.AbstractProtocol",
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "org.apache.coyote.http11.AbstractHttp11Protocol",
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
     }
 ]

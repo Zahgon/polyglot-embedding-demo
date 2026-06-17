@@ -8,11 +8,11 @@ https://www.graalvm.org/latest/reference-manual/embed-languages/
 
 ## Setup
 
-Use a GraalVM distribution that is compatible with the GraalVM Polyglot version configured in [pom.xml](./pom.xml). By default, this example uses the latest released Polyglot version `25.0.3`.
+Use a GraalVM distribution that is compatible with the GraalVM Polyglot version configured in [pom.xml](./pom.xml). By default, this example uses Polyglot version `25.1.3`.
 
-For the best guest-language performance, run the application on a runtime that provides the optimizing Truffle runtime. Oracle GraalVM and GraalVM Community Edition provide optimized guest-code execution. Other JDKs can also run the example, but guest code executes in interpreter-only mode unless runtime optimization is enabled for that JDK. In particular, Oracle JDK requires `-XX:+EnableJVMCI`; OpenJDK requires `-XX:+EnableJVMCI` and the Graal compiler on the `--upgrade-module-path`. If optimization is not available, the application still runs, but GraalVM prints a warning that the fallback runtime does not support runtime compilation.
+For the best guest-language performance, run the application on Oracle GraalVM 25 or GraalVM Community Edition 25. These runtimes provide optimized guest-code execution without extra configuration. Oracle JDK, OpenJDK, and JDK 21 runtimes can also run the example, but guest code uses the fallback runtime unless the application uses polyglot isolates.
 
-Starting with Polyglot `25.1`, polyglot isolates can be used to get guest-language runtime compilation on a JDK that does not provide an optimizing Truffle runtime. For Polyglot versions before `25.1`, isolated language execution requires Oracle GraalVM. See [Runtime Optimization Support](https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support) in the embedding guide for details.
+The `isolated` Maven profile enables polyglot isolates for JavaScript and can be used to get optimized guest-language execution on JDKs that do not provide the optimizing Truffle runtime directly. See [Runtime Optimization Support](https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support) in the embedding guide for details.
 
 [Download](https://www.graalvm.org/downloads/) a compatible GraalVM and point the `JAVA_HOME` environment variable to it.
 
@@ -57,5 +57,9 @@ Response:
   ...
 </svg>
 ```
+
+Rendered chart:
+
+![Rendered bar chart](chart.svg)
 
 The controller validates the submitted chart data before invoking the bundled renderer. Invalid input is rejected with HTTP `400`.
