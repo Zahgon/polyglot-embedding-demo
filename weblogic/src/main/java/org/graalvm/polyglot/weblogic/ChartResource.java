@@ -45,7 +45,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import jakarta.xml.bind.annotation.XmlAccessType;
 import jakarta.xml.bind.annotation.XmlAccessorType;
@@ -58,25 +57,24 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
 @Path("/chart")
 public final class ChartResource {
 
-    private static final int MAX_POINTS = 200;
-    private static final int DEFAULT_WIDTH = 320;
-    private static final int DEFAULT_HEIGHT = 80;
-    private static final int MIN_WIDTH = 16;
+    private static final int MAX_BARS = 100;
+    private static final int DEFAULT_WIDTH = 480;
+    private static final int DEFAULT_HEIGHT = 320;
+    private static final int MIN_WIDTH = 240;
     private static final int MAX_WIDTH = 2048;
-    private static final int MIN_HEIGHT = 16;
+    private static final int MIN_HEIGHT = 180;
     private static final int MAX_HEIGHT = 1024;
-    private static final String DEFAULT_COLOR = "#2563eb";
+    private static final int MAX_TEXT_LENGTH = 80;
     private static final String IMAGE_SVG = "image/svg+xml";
     private static final MediaType IMAGE_SVG_TYPE = MediaType.valueOf(IMAGE_SVG);
-    private static final Pattern SAFE_COLOR = Pattern.compile("#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?");
-    private static final String SCRIPT_D3_PATH = loadScript("js/d3-path.min.js");
-    private static final String SCRIPT_D3_SHAPE = loadScript("js/d3-shape.min.js");
-    private static final String SCRIPT_SPARKLINE = loadScript("js/sparkline.js");
+    private static final Source D3 = Source.newBuilder("js", loadScript("js/d3.v7.min.js"), "d3.v7.min.js").buildLiteral();
+    private static final Source BAR_CHART = Source.newBuilder("js", loadScript("js/barchart.js"), "barchart.js").buildLiteral();
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
@@ -90,11 +88,10 @@ public final class ChartResource {
         }
 
         try (Context context = Context.newBuilder("js").build()) {
-            context.eval("js", SCRIPT_D3_PATH);
-            context.eval("js", SCRIPT_D3_SHAPE);
-            context.eval("js", SCRIPT_SPARKLINE);
-            Value renderSparkline = context.getBindings("js").getMember("renderSparkline");
-            String svg = renderSparkline.execute(validatedRequest.toJson()).asString();
+            context.eval(D3);
+            context.eval(BAR_CHART);
+            Value renderBarChart = context.getBindings("js").getMember("renderBarChart");
+            String svg = renderBarChart.execute(validatedRequest.toJson()).asString();
             return Response.ok(svg, IMAGE_SVG_TYPE).build();
         } catch (PolyglotException exception) {
             StringBuilder message = new StringBuilder("Unable to render chart due to ");
@@ -117,22 +114,29 @@ public final class ChartResource {
         if (request == null) {
             throw new IllegalArgumentException("Request body must contain chart input JSON.");
         }
-        if (request.getValues() == null || request.getValues().size() < 2 || request.getValues().size() > MAX_POINTS) {
-            throw new IllegalArgumentException("values must contain between 2 and " + MAX_POINTS + " numbers.");
+        if (request.getX() == null || request.getY() == null || request.getX().isEmpty() || request.getX().size() > MAX_BARS || request.getX().size() != request.getY().size()) {
+            throw new IllegalArgumentException("x and y must contain the same number of entries, between 1 and " + MAX_BARS + ".");
         }
 
-        List<Double> values = new ArrayList<>(request.getValues().size());
-        for (Double value : request.getValues()) {
-            if (value == null || !Double.isFinite(value)) {
-                throw new IllegalArgumentException("values must contain only finite numbers.");
+        List<String> x = new ArrayList<>(request.getX().size());
+        for (String label : request.getX()) {
+            x.add(validateText(label, "x value", "Bar"));
+        }
+
+        List<Double> y = new ArrayList<>(request.getY().size());
+        for (Double value : request.getY()) {
+            if (value == null || !Double.isFinite(value) || value < 0) {
+                throw new IllegalArgumentException("y values must be finite, non-negative numbers.");
             }
-            values.add(value);
+            y.add(value);
         }
 
+        String title = validateText(request.getTitle(), "title", "Bar chart");
+        String xLabel = validateText(request.getXLabel(), "xLabel", "Category");
+        String yLabel = validateText(request.getYLabel(), "yLabel", "Value");
         int width = boundedDimension(request.getWidth(), DEFAULT_WIDTH, MIN_WIDTH, MAX_WIDTH, "width");
         int height = boundedDimension(request.getHeight(), DEFAULT_HEIGHT, MIN_HEIGHT, MAX_HEIGHT, "height");
-        String color = validateColor(request.getColor());
-        return new ChartRequest(values, width, height, color);
+        return new ChartRequest(title, xLabel, yLabel, x, y, width, height);
     }
 
     private static int boundedDimension(Integer requested, int defaultValue, int min, int max, String name) {
@@ -143,14 +147,12 @@ public final class ChartResource {
         return value;
     }
 
-    private static String validateColor(String requested) {
-        if (requested == null || requested.isBlank()) {
-            return DEFAULT_COLOR;
+    private static String validateText(String requested, String name, String defaultValue) {
+        String text = requested == null || requested.isBlank() ? defaultValue : requested.trim();
+        if (text.length() > MAX_TEXT_LENGTH) {
+            throw new IllegalArgumentException(name + " must be at most " + MAX_TEXT_LENGTH + " characters.");
         }
-        if (!SAFE_COLOR.matcher(requested).matches()) {
-            throw new IllegalArgumentException("color must be a hex color such as #2563eb.");
-        }
-        return requested;
+        return text;
     }
 
     private static String loadScript(String resourceName) {
@@ -167,27 +169,65 @@ public final class ChartResource {
     @XmlRootElement
     @XmlAccessorType(XmlAccessType.FIELD)
     public static final class ChartRequest {
-        private List<Double> values;
+        private String title;
+        private String xLabel;
+        private String yLabel;
+        private List<String> x;
+        private List<Double> y;
         private Integer width;
         private Integer height;
-        private String color;
 
         public ChartRequest() {
         }
 
-        public ChartRequest(List<Double> values, Integer width, Integer height, String color) {
-            this.values = values;
+        public ChartRequest(String title, String xLabel, String yLabel, List<String> x, List<Double> y, Integer width, Integer height) {
+            this.title = title;
+            this.xLabel = xLabel;
+            this.yLabel = yLabel;
+            this.x = x;
+            this.y = y;
             this.width = width;
             this.height = height;
-            this.color = color;
         }
 
-        public List<Double> getValues() {
-            return values;
+        public String getTitle() {
+            return title;
         }
 
-        public void setValues(List<Double> values) {
-            this.values = values;
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getXLabel() {
+            return xLabel;
+        }
+
+        public void setXLabel(String xLabel) {
+            this.xLabel = xLabel;
+        }
+
+        public String getYLabel() {
+            return yLabel;
+        }
+
+        public void setYLabel(String yLabel) {
+            this.yLabel = yLabel;
+        }
+
+        public List<String> getX() {
+            return x;
+        }
+
+        public void setX(List<String> x) {
+            this.x = x;
+        }
+
+        public List<Double> getY() {
+            return y;
+        }
+
+        public void setY(List<Double> y) {
+            this.y = y;
         }
 
         public Integer getWidth() {
@@ -206,27 +246,61 @@ public final class ChartResource {
             this.height = height;
         }
 
-        public String getColor() {
-            return color;
-        }
-
-        public void setColor(String color) {
-            this.color = color;
-        }
-
         String toJson() {
             StringBuilder json = new StringBuilder();
-            json.append("{\"values\":[");
-            for (int i = 0; i < values.size(); i++) {
+            json.append('{');
+            appendJsonField(json, "title", title);
+            json.append(',');
+            appendJsonField(json, "xLabel", xLabel);
+            json.append(',');
+            appendJsonField(json, "yLabel", yLabel);
+            json.append(",\"x\":[");
+            for (int i = 0; i < x.size(); i++) {
                 if (i > 0) {
                     json.append(',');
                 }
-                json.append(values.get(i));
+                appendJsonString(json, x.get(i));
+            }
+            json.append("],\"y\":[");
+            for (int i = 0; i < y.size(); i++) {
+                if (i > 0) {
+                    json.append(',');
+                }
+                json.append(y.get(i));
             }
             json.append("],\"width\":").append(width);
             json.append(",\"height\":").append(height);
-            json.append(",\"color\":\"").append(color).append("\"}");
+            json.append('}');
             return json.toString();
         }
+    }
+
+    private static void appendJsonField(StringBuilder json, String name, String value) {
+        json.append('\"').append(name).append("\":");
+        appendJsonString(json, value);
+    }
+
+    private static void appendJsonString(StringBuilder json, String value) {
+        json.append('\"');
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            switch (ch) {
+                case '\"' -> json.append("\\\"");
+                case '\\' -> json.append("\\\\");
+                case '\b' -> json.append("\\b");
+                case '\f' -> json.append("\\f");
+                case '\n' -> json.append("\\n");
+                case '\r' -> json.append("\\r");
+                case '\t' -> json.append("\\t");
+                default -> {
+                    if (ch < 0x20) {
+                        json.append(String.format("\\u%04x", (int) ch));
+                    } else {
+                        json.append(ch);
+                    }
+                }
+            }
+        }
+        json.append('\"');
     }
 }

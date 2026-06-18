@@ -53,41 +53,46 @@ class ChartResourceTest {
     @Test
     void rendersPostedChartDataAsSvg() {
         ChartResource.ChartRequest request = new ChartResource.ChartRequest(
-                List.of(1.0, 3.0, 2.0, 5.0, 4.0), 400, 120, "#16a34a");
+                "Fruit sold", "Fruit", "Count", List.of("Apples", "Bananas", "Cherries"), List.of(4.0, 7.0, 5.0), 480, 320);
 
         try (Response response = new ChartResource().render(request)) {
             Assertions.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
             Assertions.assertEquals(MediaType.valueOf("image/svg+xml"), response.getMediaType());
             String body = (String) response.getEntity();
-            Assertions.assertTrue(body.startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 400 120\">"));
-            Assertions.assertTrue(body.contains("<path d=\"M"));
-            Assertions.assertTrue(body.contains("stroke=\"#16a34a\""));
+            Assertions.assertTrue(body.startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 480 320\">"));
+            Assertions.assertTrue(body.contains("<title>Fruit sold</title>"));
+            Assertions.assertTrue(body.contains(">Fruit<"));
+            Assertions.assertTrue(body.contains(">Count<"));
+            Assertions.assertTrue(body.contains("<rect x=\""));
         }
     }
 
     @Test
-    void rejectsUnsafeColor() {
-        ChartResource.ChartRequest request = new ChartResource.ChartRequest(List.of(1.0, 2.0, 3.0), null, null, "red");
+    void rejectsNegativeBarValue() {
+        ChartResource.ChartRequest request = new ChartResource.ChartRequest(
+                "Fruit sold", "Fruit", "Count", List.of("Apples"), List.of(-1.0), null, null);
 
         try (Response response = new ChartResource().render(request)) {
             Assertions.assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
             Assertions.assertEquals(MediaType.TEXT_PLAIN_TYPE, response.getMediaType());
-            Assertions.assertTrue(((String) response.getEntity()).contains("color must be a hex color"));
+            Assertions.assertTrue(((String) response.getEntity()).contains("y values must be finite, non-negative numbers"));
         }
     }
 
     @Test
-    void rejectsTooManyPoints() {
-        List<Double> values = new ArrayList<>();
-        for (int i = 0; i < 201; i++) {
-            values.add((double) i);
+    void rejectsTooManyBars() {
+        List<String> x = new ArrayList<>();
+        List<Double> y = new ArrayList<>();
+        for (int i = 0; i < 101; i++) {
+            x.add("Bar " + i);
+            y.add((double) i);
         }
-        ChartResource.ChartRequest request = new ChartResource.ChartRequest(values, null, null, null);
+        ChartResource.ChartRequest request = new ChartResource.ChartRequest(null, null, null, x, y, null, null);
 
         try (Response response = new ChartResource().render(request)) {
             Assertions.assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
             Assertions.assertEquals(MediaType.TEXT_PLAIN_TYPE, response.getMediaType());
-            Assertions.assertTrue(((String) response.getEntity()).contains("values must contain between 2 and 200 numbers"));
+            Assertions.assertTrue(((String) response.getEntity()).contains("x and y must contain the same number of entries, between 1 and 100"));
         }
     }
 }

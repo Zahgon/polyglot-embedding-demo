@@ -1,7 +1,7 @@
 # Deploying a GraalVM Polyglot Application to Oracle WebLogic
 
 This Maven project builds a Jakarta EE WAR that embeds GraalJS with the GraalVM Polyglot API and deploys to Oracle WebLogic.
-The application exposes a `POST /chart` endpoint under the WebLogic context root `/weblogic-test`. The endpoint validates JSON chart data and uses bundled, trusted JavaScript to generate an SVG sparkline.
+The application exposes a `POST /chart` endpoint under the WebLogic context root `/weblogic-test`. The endpoint validates JSON chart data and uses bundled, trusted JavaScript to generate an SVG bar chart.
 
 For more details on polyglot embedding, see the GraalVM documentation:
 https://www.graalvm.org/latest/reference-manual/embed-languages/
@@ -33,7 +33,7 @@ There are two supported deployment layouts.
 
 The default Maven build packages the Graal Polyglot, Truffle, and JavaScript runtime jars inside the WAR. This layout is simple and is appropriate when only one deployed application uses GraalVM Polyglot languages, or when applications run with the fallback Truffle runtime.
 
-For best guest-language performance, run WebLogic on a runtime that provides the optimizing Truffle runtime. JDKs without an optimizing Truffle runtime can run the application with the fallback Truffle runtime, but guest code executes in interpreter-only mode unless runtime optimization is enabled for that JDK. In particular, Oracle JDK requires `-XX:+EnableJVMCI`; OpenJDK requires `-XX:+EnableJVMCI` and the Graal compiler on the `--upgrade-module-path`. If optimization is not available, the application still runs, but GraalVM prints a warning that the fallback runtime does not support runtime compilation.
+For best guest-language performance, run WebLogic on a runtime that provides the optimizing Truffle runtime. JDKs without an optimizing Truffle runtime can run the application with the fallback Truffle runtime, but guest code executes in interpreter-only mode.
 
 ### Server-level Polyglot runtime with `PRE_CLASSPATH`
 
@@ -126,15 +126,22 @@ After deploying the WAR, post chart data as an `application/json` request body:
 curl -s -X POST http://localhost:7001/weblogic-test/chart \
   -H 'Content-Type: application/json' \
   -H 'Accept: image/svg+xml' \
-  --data-binary '{"values":[1,3,2,5,4],"width":400,"height":120,"color":"#16a34a"}'
+  --data-binary '{"title":"Fruit sold","xLabel":"Fruit","yLabel":"Count","x":["Apples","Bananas","Cherries"],"y":[4,7,5],"width":480,"height":320}'
 ```
 
 Response:
 
 ```xml
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120">
-  <path d="..." fill="none" stroke="#16a34a" stroke-width="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320">
+  <title>Fruit sold</title>
+  ...
+  <rect x="..." y="..." width="..." height="..." fill="#2563eb"/>
+  ...
 </svg>
 ```
+
+Rendered chart:
+
+![Rendered bar chart](chart.svg)
 
 The resource validates the submitted chart data before invoking the bundled renderer. Invalid input is rejected with HTTP `400`.
