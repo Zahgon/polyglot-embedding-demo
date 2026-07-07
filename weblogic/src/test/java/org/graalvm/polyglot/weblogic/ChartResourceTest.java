@@ -1,0 +1,98 @@
+/*
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+package org.graalvm.polyglot.weblogic;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
+class ChartResourceTest {
+
+    @Test
+    void rendersPostedChartDataAsSvg() {
+        ChartResource.ChartRequest request = new ChartResource.ChartRequest(
+                "Fruit sold", "Fruit", "Count", List.of("Apples", "Bananas", "Cherries"), List.of(4.0, 7.0, 5.0), 480, 320);
+
+        try (Response response = new ChartResource().render(request)) {
+            Assertions.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+            Assertions.assertEquals(MediaType.valueOf("image/svg+xml"), response.getMediaType());
+            String body = (String) response.getEntity();
+            Assertions.assertTrue(body.startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 480 320\">"));
+            Assertions.assertTrue(body.contains("<title>Fruit sold</title>"));
+            Assertions.assertTrue(body.contains(">Fruit<"));
+            Assertions.assertTrue(body.contains(">Count<"));
+            Assertions.assertTrue(body.contains("<rect x=\""));
+        }
+    }
+
+    @Test
+    void rejectsNegativeBarValue() {
+        ChartResource.ChartRequest request = new ChartResource.ChartRequest(
+                "Fruit sold", "Fruit", "Count", List.of("Apples"), List.of(-1.0), null, null);
+
+        try (Response response = new ChartResource().render(request)) {
+            Assertions.assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+            Assertions.assertEquals(MediaType.TEXT_PLAIN_TYPE, response.getMediaType());
+            Assertions.assertTrue(((String) response.getEntity()).contains("y values must be finite, non-negative numbers"));
+        }
+    }
+
+    @Test
+    void rejectsTooManyBars() {
+        List<String> x = new ArrayList<>();
+        List<Double> y = new ArrayList<>();
+        for (int i = 0; i < 101; i++) {
+            x.add("Bar " + i);
+            y.add((double) i);
+        }
+        ChartResource.ChartRequest request = new ChartResource.ChartRequest(null, null, null, x, y, null, null);
+
+        try (Response response = new ChartResource().render(request)) {
+            Assertions.assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+            Assertions.assertEquals(MediaType.TEXT_PLAIN_TYPE, response.getMediaType());
+            Assertions.assertTrue(((String) response.getEntity()).contains("x and y must contain the same number of entries, between 1 and 100"));
+        }
+    }
+}

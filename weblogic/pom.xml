@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.graalvm.polyglot</groupId>
+  <artifactId>weblogic-test</artifactId>
+  <version>0.1</version>
+  <packaging>war</packaging>
+
+  <name>GraalVM Polyglot WebLogic Demo</name>
+  <description>WebLogic GraalJS Polyglot SVG chart embedding example</description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>21</maven.compiler.release>
+    <jakartaee.version>9.1.0</jakartaee.version>
+    <jersey.version>3.0.14</jersey.version>
+    <junit.version>5.10.2</junit.version>
+    <graal.version>25.0.3</graal.version>
+    <graal.js.artifact>js</graal.js.artifact>
+    <graal.dependency.scope>compile</graal.dependency.scope>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>jakarta.platform</groupId>
+      <artifactId>jakarta.jakartaee-api</artifactId>
+      <version>${jakartaee.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.graalvm.polyglot</groupId>
+      <artifactId>polyglot</artifactId>
+      <version>${graal.version}</version>
+      <scope>${graal.dependency.scope}</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.graalvm.polyglot</groupId>
+      <artifactId>${graal.js.artifact}</artifactId>
+      <version>${graal.version}</version>
+      <type>pom</type>
+      <scope>${graal.dependency.scope}</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jersey.core</groupId>
+      <artifactId>jersey-common</artifactId>
+      <version>${jersey.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>weblogic-test</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>${maven.compiler.release}</release>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-war-plugin</artifactId>
+        <version>3.4.0</version>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Application-Name>weblogic-test</Application-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <profile>
+      <id>provided-polyglot</id>
+      <properties>
+        <graal.dependency.scope>provided</graal.dependency.scope>
+      </properties>
+    </profile>
+    <profile>
+      <!-- Copies the Graal Polyglot runtime jars for the WebLogic PRE_CLASSPATH layout:
+           mvn -Pgraal-polyglot-preclasspath dependency:copy-dependencies -->
+      <id>graal-polyglot-preclasspath</id>
+      <properties>
+        <graal.polyglot.lib.dir>${project.build.directory}/graal-polyglot-preclasspath</graal.polyglot.lib.dir>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.6.1</version>
+            <configuration>
+              <includeScope>runtime</includeScope>
+              <excludeTypes>pom</excludeTypes>
+              <outputDirectory>${graal.polyglot.lib.dir}</outputDirectory>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>
