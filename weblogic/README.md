@@ -48,6 +48,7 @@ See [Runtime Optimization Support](https://www.graalvm.org/latest/reference-manu
 * `mvn test` runs the resource tests.
 * `mvn package` builds `target/weblogic-test.war` with Polyglot runtime jars packaged in the WAR.
 * `mvn -Pprovided-polyglot package` builds a smaller WAR that expects Polyglot runtime jars on WebLogic `PRE_CLASSPATH`.
+* `mvn -Pgraal-polyglot-preclasspath dependency:copy-dependencies` copies the Polyglot runtime jars for the `PRE_CLASSPATH` layout (used by `setup-graal-polyglot-preclasspath.sh`).
 
 ## Configure `PRE_CLASSPATH`
 
@@ -64,7 +65,7 @@ By default, this copies the Graal Polyglot runtime jars to:
 ${ORACLE_HOME}/graal-polyglot-25.0.3/lib
 ```
 
-To use a different Polyglot version or output directory:
+The Polyglot version defaults to the `graal.version` property of the project `pom.xml`. To use a different Polyglot version or output directory:
 
 ```bash
 GRAALVM_POLYGLOT_VERSION=25.0.3 \

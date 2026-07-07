@@ -95,5 +95,27 @@
         <graal.dependency.scope>provided</graal.dependency.scope>
       </properties>
     </profile>
+    <profile>
+      <!-- Copies the Graal Polyglot runtime jars for the WebLogic PRE_CLASSPATH layout:
+           mvn -Pgraal-polyglot-preclasspath dependency:copy-dependencies -->
+      <id>graal-polyglot-preclasspath</id>
+      <properties>
+        <graal.polyglot.lib.dir>${project.build.directory}/graal-polyglot-preclasspath</graal.polyglot.lib.dir>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.6.1</version>
+            <configuration>
+              <includeScope>runtime</includeScope>
+              <excludeTypes>pom</excludeTypes>
+              <outputDirectory>${graal.polyglot.lib.dir}</outputDirectory>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 </project>
