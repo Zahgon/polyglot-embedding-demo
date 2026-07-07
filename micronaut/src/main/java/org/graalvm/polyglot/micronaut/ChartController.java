@@ -53,6 +53,7 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.serde.annotation.Serdeable;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -73,18 +74,22 @@ public final class ChartController {
 
     @Post(consumes = MediaType.APPLICATION_JSON, produces = {MediaType.IMAGE_SVG, MediaType.TEXT_PLAIN})
     public HttpResponse<String> render(@Body ChartRequest request) {
-        ChartRequest validatedRequest;
+        ChartRequest validated;
         try {
-            validatedRequest = validate(request);
+            validated = validate(request);
         } catch (IllegalArgumentException exception) {
             return badRequest(exception.getMessage());
         }
 
-        try (Context context = Context.newBuilder("js").build()) {
+        try (Context context = Context.newBuilder("js").
+                        allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowListAccess(true).build()).
+                        build()) {
             context.eval(D3);
             context.eval(BAR_CHART);
             Value renderBarChart = context.getBindings("js").getMember("renderBarChart");
-            String svg = renderBarChart.execute(validatedRequest.toJson()).asString();
+            String svg = renderBarChart.execute(validated.title(), validated.xLabel(), validated.yLabel(),
+                                                validated.x(), validated.y(),
+                                                validated.width(), validated.height()).asString();
             return HttpResponse.ok(svg).contentType(MediaType.IMAGE_SVG_TYPE);
         } catch (PolyglotException exception) {
             StringBuilder message = new StringBuilder("Unable to render chart due to ");
@@ -158,62 +163,6 @@ public final class ChartController {
 
     @Serdeable
     public record ChartRequest(String title, String xLabel, String yLabel, List<String> x, List<Double> y, Integer width, Integer height) {
-
-        String toJson() {
-            StringBuilder json = new StringBuilder();
-            json.append('{');
-            appendJsonField(json, "title", title);
-            json.append(',');
-            appendJsonField(json, "xLabel", xLabel);
-            json.append(',');
-            appendJsonField(json, "yLabel", yLabel);
-            json.append(",\"x\":[");
-            for (int i = 0; i < x.size(); i++) {
-                if (i > 0) {
-                    json.append(',');
-                }
-                appendJsonString(json, x.get(i));
-            }
-            json.append("],\"y\":[");
-            for (int i = 0; i < y.size(); i++) {
-                if (i > 0) {
-                    json.append(',');
-                }
-                json.append(y.get(i));
-            }
-            json.append("],\"width\":").append(width);
-            json.append(",\"height\":").append(height);
-            json.append('}');
-            return json.toString();
-        }
     }
 
-    private static void appendJsonField(StringBuilder json, String name, String value) {
-        json.append('\"').append(name).append("\":");
-        appendJsonString(json, value);
-    }
-
-    private static void appendJsonString(StringBuilder json, String value) {
-        json.append('\"');
-        for (int i = 0; i < value.length(); i++) {
-            char ch = value.charAt(i);
-            switch (ch) {
-                case '\"' -> json.append("\\\"");
-                case '\\' -> json.append("\\\\");
-                case '\b' -> json.append("\\b");
-                case '\f' -> json.append("\\f");
-                case '\n' -> json.append("\\n");
-                case '\r' -> json.append("\\r");
-                case '\t' -> json.append("\\t");
-                default -> {
-                    if (ch < 0x20) {
-                        json.append(String.format("\\u%04x", (int) ch));
-                    } else {
-                        json.append(ch);
-                    }
-                }
-            }
-        }
-        json.append('\"');
-    }
 }

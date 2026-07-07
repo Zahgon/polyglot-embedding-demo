@@ -13,12 +13,7 @@
         .replace(/"/g, "&quot;");
   }
 
-  globalThis.renderBarChart = function (inputJson) {
-    const input = JSON.parse(inputJson);
-    const x = input.x;
-    const y = input.y;
-    const width = input.width || 480;
-    const height = input.height || 320;
+  globalThis.renderBarChart = function (title, xLabel, yLabel, x, y, width, height) {
     const margin = { top: 48, right: 20, bottom: 72, left: 64 };
 
     const xScale = d3.scaleBand()
@@ -48,14 +43,14 @@
     }
 
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">\n` +
-        `  <title>${escapeXml(input.title)}</title>\n` +
-        `  <text x="${width / 2}" y="24" text-anchor="middle" font-size="16" font-weight="bold">${escapeXml(input.title)}</text>\n` +
+        `  <title>${escapeXml(title)}</title>\n` +
+        `  <text x="${width / 2}" y="24" text-anchor="middle" font-size="16" font-weight="bold">${escapeXml(title)}</text>\n` +
         ticks +
         `  <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="#111827"/>\n` +
         `  <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="#111827"/>\n` +
         rects +
-        `  <text x="${width / 2}" y="${height - 20}" text-anchor="middle" font-size="12">${escapeXml(input.xLabel)}</text>\n` +
-        `  <text transform="translate(18 ${height / 2}) rotate(-90)" text-anchor="middle" font-size="12">${escapeXml(input.yLabel)}</text>\n` +
+        `  <text x="${width / 2}" y="${height - 20}" text-anchor="middle" font-size="12">${escapeXml(xLabel)}</text>\n` +
+        `  <text transform="translate(18 ${height / 2}) rotate(-90)" text-anchor="middle" font-size="12">${escapeXml(yLabel)}</text>\n` +
         `</svg>`;
   };
 }());
