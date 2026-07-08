@@ -1,0 +1,12 @@
+[
+    {
+        "name": "org.apache.coyote.AbstractProtocol",
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "org.apache.coyote.http11.AbstractHttp11Protocol",
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    }
+]
