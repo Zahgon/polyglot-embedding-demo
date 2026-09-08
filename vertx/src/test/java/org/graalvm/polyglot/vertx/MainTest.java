@@ -38,11 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.polyglot.quarkus;
+package org.graalvm.polyglot.vertx;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
-@QuarkusIntegrationTest
-class ChartResourceIT extends ChartResourceTest {
-    // Execute the same tests but in packaged mode.
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
+/**
+ * Pins where the listen port is read from. A port resolved from the wrong source still compiles and
+ * still leaves every other test green, because the rest of the suite chooses its own port.
+ */
+class MainTest {
+
+    private static final String PORT_PROPERTY = "http.port";
+
+    @AfterEach
+    void clearPortProperty() {
+        System.clearProperty(PORT_PROPERTY);
+    }
+
+    @Test
+    void defaultsToTheDocumentedPort() {
+        assumeTrue(System.getenv("HTTP_PORT") == null, "HTTP_PORT is set in this environment");
+        System.clearProperty(PORT_PROPERTY);
+        assertEquals(8080, Main.port());
+        assertEquals(8080, ChartVerticle.DEFAULT_PORT);
+    }
+
+    @Test
+    void readsTheConfiguredPort() {
+        System.setProperty(PORT_PROPERTY, "9137");
+        assertEquals(9137, Main.port());
+    }
+
+    @Test
+    void ignoresABlankConfiguredPort() {
+        assumeTrue(System.getenv("HTTP_PORT") == null, "HTTP_PORT is set in this environment");
+        System.setProperty(PORT_PROPERTY, "   ");
+        assertEquals(8080, Main.port());
+    }
+
+    @Test
+    void rejectsAnUnparseablePort() {
+        System.setProperty(PORT_PROPERTY, "not-a-port");
+        assertThrows(NumberFormatException.class, Main::port);
+    }
 }

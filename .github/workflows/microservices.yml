@@ -15,8 +15,8 @@ jobs:
       matrix:
         project:
           - micronaut
-          - quarkus
           - spring
+          - vertx
     steps:
       - uses: actions/checkout@v4
       - uses: graalvm/setup-graalvm@v1

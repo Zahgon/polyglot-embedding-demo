@@ -1,6 +1,6 @@
-# Polyglot Embedding Demo with GraalVM: Quarkus
+# Polyglot Embedding Demo with GraalVM: Vert.x
 
-Demonstration project showing how to embed GraalJS in a Quarkus REST service with the GraalVM Polyglot API and Maven.
+Demonstration project showing how to embed GraalJS in a Vert.x web service with the GraalVM Polyglot API and Maven.
 It exposes a `POST /chart` endpoint that validates JSON chart data and uses bundled, trusted JavaScript to generate an SVG bar chart.
 
 For more details on polyglot embedding, see the GraalVM documentation:
@@ -23,16 +23,23 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 ## Maven Usage
 
-Download Maven or import this directory as a Maven project into your IDE. The commands below should be run from this `quarkus` directory.
+Download Maven or import this directory as a Maven project into your IDE. The commands below should be run from this `vertx` directory.
 
 * `mvn test` to run the HTTP endpoint tests.
 * `mvn -Pisolated test` to run the tests with the isolated JavaScript engine.
-* `mvn quarkus:dev` to run the application in Quarkus dev mode.
-* `mvn -Pisolated quarkus:dev` to run dev mode with the isolated JavaScript engine.
-* `mvn package` to build the Quarkus application.
-* `mvn -Pnative package` to build a native executable with Quarkus Native Image support.
+* `mvn package` to build the runnable application archive.
+* `mvn -DskipITs=false verify` to additionally run the tests against the packaged application.
+* `mvn -Pnative package` to build a native executable with GraalVM Native Image.
 
-The `isolated` profile uses `org.graalvm.polyglot:js-isolate` instead of the default JavaScript artifact and passes `-Dpolyglot.engine.SpawnIsolate=true` to the Quarkus application and test JVMs. For Polyglot `25.1` Community Edition, use `org.graalvm.polyglot:js-isolate-community` as noted in [pom.xml](./pom.xml).
+After packaging, start the application with the runnable archive from `target`:
+
+```bash
+java -jar target/vertx-test-1.0.0-SNAPSHOT-runner.jar
+```
+
+The service listens on port `8080`. Set the `http.port` system property or the `HTTP_PORT` environment variable to change it.
+
+The `isolated` profile uses `org.graalvm.polyglot:js-isolate` instead of the default JavaScript artifact and passes `-Dpolyglot.engine.SpawnIsolate=true` to the application and test JVMs. For Polyglot `25.1` Community Edition, use `org.graalvm.polyglot:js-isolate-community` as noted in [pom.xml](./pom.xml).
 
 Please see the [pom.xml](./pom.xml) file for further details on the configuration.
 
@@ -62,4 +69,4 @@ Rendered chart:
 
 ![Rendered bar chart](chart.svg)
 
-The controller validates the submitted chart data before invoking the bundled renderer. Invalid input is rejected with HTTP `400`.
+The request handler validates the submitted chart data before invoking the bundled renderer. Invalid input is rejected with HTTP `400`.
